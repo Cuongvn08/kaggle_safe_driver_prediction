@@ -231,7 +231,7 @@ def train_predict():
         
         xgb_submission['target'] += xgb_model.predict(d_test, ntree_limit = xgb_model.best_ntree_limit)
         
-    xgb_submission = xgb_submission / kfold
+    xgb_submission['target'] = xgb_submission['target'] / kfold
     gc.collect()
     
     # lightgbm
