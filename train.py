@@ -6,12 +6,13 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 from sklearn import preprocessing
+from sklearn.model_selection import StratifiedKFold
 import xgboost as xgb
 import lightgbm as lgb
 from datetime import datetime
 import gc
-from xgboost_tuner import XgboostTuner
-from sklearn.model_selection import StratifiedKFold
+import xgboost_tuner
+import lightgbm_tuner
 
 
 import warnings
@@ -28,10 +29,10 @@ class Settings(Enum):
     global submission_path
     global IS_PARAMS_TUNNING
     
-    train_path      = 'C:/data/kaggle/safe_driver_prediction/train.csv'
-    test_path       = 'C:/data/kaggle/safe_driver_prediction/test.csv'
-    submission_path = 'C:/data/kaggle/safe_driver_prediction/sample_submission.csv'
-    IS_PARAMS_TUNNING = False
+    train_path      = '/data/kaggle/safe_driver_prediction/train.csv'
+    test_path       = '/data/kaggle/safe_driver_prediction/test.csv'
+    submission_path = '/data/kaggle/safe_driver_prediction/sample_submission.csv'
+    IS_PARAMS_TUNNING = True
     
     def __str__(self):
         return self.value
@@ -51,9 +52,7 @@ def process_data():
     
     # analyze
         
-    # fill NA
-    _fill_NA(train_df)
-    _fill_NA(test_df)
+    # fill NA: nothing to do because the missing cells were already filled with -1
     
     # encode features: TBD
         
@@ -82,8 +81,7 @@ def process_data():
     del train_df
     del test_df
     gc.collect()
-    
-    
+        
 def _load_data():
     print('\nLoading data ...')
     train_df = pd.read_csv(train_path)
@@ -141,10 +139,6 @@ def _analyze(df):
 def _fill_NA(df):
     print('\nFilling data ...')
     
-    na_ratio = ((df.isnull().sum() / len(df)) * 100).sort_values(ascending=False)
-    print('NA ratio: ')
-    print(na_ratio) 
-    
     for feature in df:
         if df[feature].dtype == 'object':
             df[feature] = df[feature].fillna("None")
@@ -183,6 +177,7 @@ def build_model():
         'colsample_bytree': 0.8,
         'alpha': 1.6,
         'lambda': 10.0,
+        'silent': 1
     }
 
     # lightgbm params
@@ -253,6 +248,7 @@ def _gini_lgb(preds, dtrain):
     score = _gini(y, preds) / _gini(y, y)
     return 'gini', score, True
         
+
 ################################################################################    
 ## STEP4: generate submission    
 def generate_submission():
@@ -260,6 +256,7 @@ def generate_submission():
 
     xgb_submission.to_csv('sub{}.csv'.format(datetime.now().\
             strftime('%Y%m%d_%H%M%S')), index=False, float_format='%.5f')
+    
     
 ################################################################################
 ## main
@@ -271,14 +268,12 @@ def main():
         generate_submission()
     else:
         # xgboost parameters tuning
-        #xgb_tuner = XgboostTuner(data_X, data_Y)
-        #xgb_tuner.tune()
+        xgboost_tuner.tune(data_x, data_y)
         
         # lightgbm parameters tuning
-        #xgb_tuner = XgboostTuner(data_X, data_Y)
-        #xgb_tuner.tune()        
-        pass
-
+        lightgbm_tuner.tune(data_x, data_y)
+        
+        
 ################################################################################
 if __name__ == "__main__":
     main()

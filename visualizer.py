@@ -11,7 +11,7 @@ np.set_printoptions(threshold = np.nan)
 
 def visualize():
     # config
-    train_path = 'D:/data/safe_driver_prediction/train.csv'
+    train_path = 'C:/data/kaggle/safe_driver_prediction/train.csv'
 
     # load data
     train_df = pd.read_csv(train_path)
