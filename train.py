@@ -13,6 +13,7 @@ from datetime import datetime
 import gc
 import xgboost_tuner
 import lightgbm_tuner
+import printer as ptr
 
 
 import warnings
@@ -41,8 +42,8 @@ class Settings(Enum):
 ################################################################################    
 ## STEP1: process data
 def process_data():
-    print('\n\nSTEP1: processing data ...')
-        
+    ptr.print_log('STEP1: processing data ...')
+    
     global data_x
     global data_y
     global test_x
@@ -63,7 +64,7 @@ def process_data():
     # select features: TBD
     
     # prepare train and valid data: TBD
-    print('\nPreparing train and test data ...')
+    ptr.print_log('Preparing train and test data ...')
     
     data_y = train_df['target']
     data_x = train_df.drop(['id', 'target'], axis=1)
@@ -83,7 +84,8 @@ def process_data():
     gc.collect()
         
 def _load_data():
-    print('\nLoading data ...')
+    ptr.print_log('Loading data ...')
+    
     train_df = pd.read_csv(train_path)
     test_df  = pd.read_csv(test_path)
     
@@ -101,7 +103,7 @@ def _load_data():
     return train_df, test_df
 
 def _analyze(df):
-    print('\nAnalyzing data ...')
+    ptr.print_log('Analyzing data ...')
     
     # show correlation
     if(1):
@@ -137,7 +139,7 @@ def _analyze(df):
         gc.collect()
     
 def _fill_NA(df):
-    print('\nFilling data ...')
+    ptr.print_log('Filling data ...')
     
     for feature in df:
         if df[feature].dtype == 'object':
@@ -145,23 +147,23 @@ def _fill_NA(df):
         else:
             df[feature] = df[feature].fillna(-1)
     
-def _encode_features(df):
-    print('\nEncoding features ...')
-        
+def _encode_features(df):    
+    ptr.print_log('Encoding features ...')
+    
 def _add_features(df):
-    print('\nAdding features ...')
+    ptr.print_log('Adding features ...')
     
 def _remove_outliers(df):
-    print('\nRemoving features ...')
+    ptr.print_log('Removing features ...')
     
 def _select_features(df):
-    print('\nSelecting features ...')
+    ptr.print_log('Selecting features ...')
     
     
 ################################################################################        
 ## STEP2: build model
 def build_model():
-    print('\n\nSTEP2: building model ...')
+    ptr.print_log('STEP2: building model ...')
     
     global xgb_params
     global lgb_params
@@ -197,8 +199,8 @@ def build_model():
 ################################################################################    
 ## STEP3: train and predict with kfold   
 def train_predict():
-    print('\n\nSTEP3: training ...')
-
+    ptr.print_log('STEP3: training ...')
+    
     global xgb_submission
     xgb_submission = pd.read_csv(submission_path)
     xgb_submission['target'] = 0
@@ -252,8 +254,8 @@ def _gini_lgb(preds, dtrain):
 ################################################################################    
 ## STEP4: generate submission    
 def generate_submission():
-    print('\n\nSTEP5: generating submission ...')
-
+    ptr.print_log('STEP4: generating submission ...')
+    
     xgb_submission.to_csv('sub{}.csv'.format(datetime.now().\
             strftime('%Y%m%d_%H%M%S')), index=False, float_format='%.5f')
     
@@ -276,6 +278,7 @@ def main():
         
 ################################################################################
 if __name__ == "__main__":
+    ptr.print_log('TRAINER')
     main()
-    print('\n\n\nThe end.')
+    ptr.print_log('THE END.')
     
