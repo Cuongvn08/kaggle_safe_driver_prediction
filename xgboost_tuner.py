@@ -5,6 +5,7 @@ import printer as ptr
 num_boost_round = 5000
 nfold = 5
 metrics = {'mae'}
+early_stopping_rounds = 10
 
 
 def tune(data_x, data_y):
@@ -62,10 +63,10 @@ def _tune_eta(params, d_train):
         cv_results = xgb.cv(
             params,
             d_train,
-            num_boost_round,
-            nfold,
-            metrics,
-            early_stopping_rounds = 10
+            num_boost_round = int(num_boost_round),
+            nfold = int(nfold),
+            metrics = metrics,
+            early_stopping_rounds = int(early_stopping_rounds)
         )
     
         # print
@@ -103,10 +104,10 @@ def _tune_max_depth__min_child_weight(params, d_train):
         cv_results = xgb.cv(
             params,
             d_train,
-            num_boost_round,
-            nfold,
-            metrics,
-            early_stopping_rounds = 10
+            num_boost_round = int(num_boost_round),
+            nfold = int(nfold),
+            metrics = metrics,
+            early_stopping_rounds = int(early_stopping_rounds)
         )
         
         # print
@@ -123,7 +124,7 @@ def _tune_max_depth__min_child_weight(params, d_train):
                     
     ptr.print_log('best max_depth: {0}'.format(best_max_depth))
     ptr.print_log('best min_child_weight: {0}'.format(best_min_child_weight))
-    ptr.print_log('min mae: '.format(min_mae))
+    ptr.print_log('min mae: {0}'.format(min_mae))
     
     return best_max_depth, best_min_child_weight
         
@@ -146,10 +147,10 @@ def _tune_subsample__colsample_bytree(params, d_train):
         cv_results = xgb.cv(
             params,
             d_train,
-            num_boost_round,
-            nfold,
-            metrics,
-            early_stopping_rounds = 10
+            num_boost_round = int(num_boost_round),
+            nfold = int(nfold),
+            metrics = metrics,
+            early_stopping_rounds = int(early_stopping_rounds)
         )
         
         # print
@@ -189,10 +190,10 @@ def _tune_alpha_lambda(params, d_train):
         cv_results = xgb.cv(
             params,
             d_train,
-            num_boost_round,
-            nfold,
-            metrics,
-            early_stopping_rounds = 10
+            num_boost_round = int(num_boost_round),
+            nfold = int(nfold),
+            metrics = metrics,
+            early_stopping_rounds = int(early_stopping_rounds)
         )
         
         # print

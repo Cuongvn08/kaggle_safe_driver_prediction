@@ -1,6 +1,6 @@
 import lightgbm as lgb
-import pytz
-from datetime import datetime
+import printer as ptr
+
 
 num_boost_round = 5000
 nfold = 5
@@ -9,8 +9,7 @@ early_stopping_rounds = 10
 
 
 def tune(data_x, data_y):
-    date_time = datetime.now(tz=pytz.timezone('Asia/Seoul')).strftime('%Y-%m-%d %H:%M:%S')
-    print('\n\n{0} Tuning lightgbm parameters ...'.format(date_time))
+    ptr.print_log('Tuning lightgbm parameters ...')
     
     d_train = lgb.Dataset(data_x, label=data_y)
     
@@ -18,7 +17,6 @@ def tune(data_x, data_y):
     params = {
         'objective': 'binary',
         'metric' : 'mae',
-        'silent' : True
     }
     
     # tune learning rate
@@ -44,12 +42,11 @@ def tune(data_x, data_y):
     params['sub_sample'] = best_subsample
     
     # end
-    print('The end.')
+    ptr.print_log('LIGHTGBM TUNER was finished.')
     
     
 def _tune_learning_rate(params, d_train):
-    date_time = datetime.now(tz=pytz.timezone('Asia/Seoul')).strftime('%Y-%m-%d %H:%M:%S')
-    print('\n{0} Tuning learning rate ...'.format(date_time))
+    ptr.print_log('Tuning learning rate ...')
     
     learning_rate_list = [0.2, 0.1, 0.05, 0.025, 0.005, 0.0025]
     min_mae = float("Inf")
@@ -62,15 +59,16 @@ def _tune_learning_rate(params, d_train):
         # run cv
         cv_results = lgb.cv(params,
                             d_train,
-                            num_boost_round = num_boost_round,
-                            folds = nfold,
+                            num_boost_round = int(num_boost_round),
+                            nfold = int(nfold),
                             metrics = metrics,
-                            early_stopping_rounds = early_stopping_rounds)
+                            early_stopping_rounds = int(early_stopping_rounds))
         
         # print
         mae = cv_results['metric1-mean'].min()
         rounds = cv_results['metric1-mean'].argmin()
-        print('learning_rate:', learning_rate, '; mae:',mae, '; rounds:', rounds)
+        ptr.print_log('learning_rate: {0}; mae: {1}; rounds: {2}'.\
+                      format(learning_rate, mae, rounds))
         
         # check min mae
         if mae < min_mae:
@@ -83,24 +81,16 @@ def _tune_learning_rate(params, d_train):
 
 
 def _tune_max_depth__num_samples_split(params, d_train):
-    date_time = datetime.now(tz=pytz.timezone('Asia/Seoul')).strftime('%Y-%m-%d %H:%M:%S')
-    print('\n{0} Tuning max depth and num samples split ...'.format(date_time))
-
+    ptr.print_log('Tuning max depth and num samples split ...')
 
 def _tune_min_samples_leaf(params, d_train):
-    date_time = datetime.now(tz=pytz.timezone('Asia/Seoul')).strftime('%Y-%m-%d %H:%M:%S')
-    print('\n{0} Tuning min samples leaf ...'.format(date_time))    
-
+    ptr.print_log('Tuning min samples leaf ...')
 
 def _tune_max_features(params, d_train):
-    date_time = datetime.now(tz=pytz.timezone('Asia/Seoul')).strftime('%Y-%m-%d %H:%M:%S')
-    print('\n{0} Tuning max features ...'.format(date_time))
-    
+    ptr.print_log('Tuning max features ...')
 
 def _tune_subsample(params, d_train):
-    date_time = datetime.now(tz=pytz.timezone('Asia/Seoul')).strftime('%Y-%m-%d %H:%M:%S')
-    print('\n{0} Tuning subsample ...'.format(date_time))
-
+    ptr.print_log('Tuning subsample ...')
 
 
     

@@ -30,10 +30,10 @@ class Settings(Enum):
     global submission_path
     global IS_PARAMS_TUNNING
     
-    train_path      = '/data/kaggle/safe_driver_prediction/train.csv'
-    test_path       = '/data/kaggle/safe_driver_prediction/test.csv'
-    submission_path = '/data/kaggle/safe_driver_prediction/sample_submission.csv'
-    IS_PARAMS_TUNNING = True
+    train_path      = 'C:/data/kaggle/safe_driver_prediction/train.csv'
+    test_path       = 'C:/data/kaggle/safe_driver_prediction/test.csv'
+    submission_path = 'C:/data/kaggle/safe_driver_prediction/sample_submission.csv'
+    IS_PARAMS_TUNNING = False
     
     def __str__(self):
         return self.value
@@ -172,13 +172,13 @@ def build_model():
     xgb_params = {
         'objective': 'binary:logistic',
         'eval_metric': 'auc',
-        'eta': 0.025,
-        'max_depth': 6, 
-        'min_child_weight': 2,
-        'subsample': 0.8,
-        'colsample_bytree': 0.8,
-        'alpha': 1.6,
-        'lambda': 10.0,
+        'eta': 0.2,
+        'max_depth': 5, 
+        'min_child_weight': 1,
+        'subsample': 0.6,
+        'colsample_bytree': 0.6,
+        'alpha': 2.0,
+        'lambda': 12.0,
         'silent': 1
     }
 
@@ -270,7 +270,7 @@ def main():
         generate_submission()
     else:
         # xgboost parameters tuning
-        xgboost_tuner.tune(data_x, data_y)
+        #xgboost_tuner.tune(data_x, data_y)
         
         # lightgbm parameters tuning
         lightgbm_tuner.tune(data_x, data_y)
