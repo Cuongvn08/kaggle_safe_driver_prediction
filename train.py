@@ -33,7 +33,7 @@ class Settings(Enum):
     train_path      = 'C:/data/kaggle/safe_driver_prediction/train.csv'
     test_path       = 'C:/data/kaggle/safe_driver_prediction/test.csv'
     submission_path = 'C:/data/kaggle/safe_driver_prediction/sample_submission.csv'
-    IS_PARAMS_TUNNING = False
+    IS_PARAMS_TUNNING = True
     
     def __str__(self):
         return self.value
