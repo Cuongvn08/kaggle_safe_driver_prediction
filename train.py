@@ -29,11 +29,15 @@ class Settings(Enum):
     global test_path
     global submission_path
     global IS_PARAMS_TUNNING
+    global XGB_WEIGHT
+    global GBM_WEIGHT
     
     train_path      = 'C:/data/kaggle/safe_driver_prediction/train.csv'
     test_path       = 'C:/data/kaggle/safe_driver_prediction/test.csv'
     submission_path = 'C:/data/kaggle/safe_driver_prediction/sample_submission.csv'
-    IS_PARAMS_TUNNING = True
+    IS_PARAMS_TUNNING = False
+    XGB_WEIGHT = 0.6
+    GBM_WEIGHT = 1 - XGB_WEIGHT
     
     def __str__(self):
         return self.value
@@ -50,8 +54,6 @@ def process_data():
     
     # load data
     train_df, test_df = _load_data()
-    
-    # analyze
         
     # fill NA: nothing to do because the missing cells were already filled with -1
     
@@ -101,42 +103,6 @@ def _load_data():
     print('test shape : ', test_df.shape)    
     
     return train_df, test_df
-
-def _analyze(df):
-    ptr.print_log('Analyzing data ...')
-    
-    # show correlation
-    if(1):
-        xgb_params = {
-            'eta': 0.05,
-            'max_depth': 8,
-            'subsample': 0.7,
-            'colsample_bytree': 0.7,
-            'objective': 'reg:linear',
-            'silent': 1,
-            'seed' : 0
-        }
-        
-        train_y = df['target'].values
-        train_x = df.drop(['id', 'target'], axis=1)
-        
-        dtrain = xgb.DMatrix(train_x, train_y, feature_names=train_x.columns.values)
-        model = xgb.train(dict(xgb_params, silent=0), dtrain, num_boost_round=100)
-        
-        featureImportance = model.get_fscore()
-        features = pd.DataFrame()
-        features['features'] = featureImportance.keys()
-        features['importance'] = featureImportance.values()
-        features.sort_values(by=['importance'],ascending=False,inplace=True)
-        fig,ax= plt.subplots()
-        fig.set_size_inches(10,20)
-        plt.xticks(rotation=90)
-        sns.barplot(data=features,x="importance",y="features",ax=ax,orient="h",color="#34495e")      
-        plt.show()
-        
-        del train_x
-        del train_y
-        gc.collect()
     
 def _fill_NA(df):
     ptr.print_log('Filling data ...')
@@ -166,22 +132,26 @@ def build_model():
     ptr.print_log('STEP2: building model ...')
     
     global xgb_params
+    global xgb_rounds
+    
     global lgb_params
+    global lgb_rounds
     
     # xgboost params
     xgb_params = {
         'objective': 'binary:logistic',
         'eval_metric': 'auc',
-        'eta': 0.2,
+        'eta': 0.005,
         'max_depth': 5, 
         'min_child_weight': 1,
-        'subsample': 0.6,
-        'colsample_bytree': 0.6,
-        'alpha': 2.0,
-        'lambda': 12.0,
+        'subsample': 0.8,
+        'colsample_bytree': 0.8,
+        'alpha': 0.4,
+        'lambda': 4.0,
         'silent': 1
     }
-
+    xgb_rounds = 2108
+    
     # lightgbm params
     lgb_params = {
         'objective': 'binary',
@@ -212,8 +182,8 @@ def train_predict():
     skf = StratifiedKFold(n_splits=kfold, random_state=0)
     
     for i, (train_index, valid_index) in enumerate(skf.split(data_x, data_y)):
-        print('xgboost kfold:', i + 1)
-
+        ptr.print_log('xgboost kfold: {}'.format(i+1))
+        
         train_x, valid_x = data_x[train_index], data_x[valid_index]
         train_y, valid_y = data_y[train_index], data_y[valid_index]
         
@@ -221,12 +191,21 @@ def train_predict():
         d_valid = xgb.DMatrix(valid_x, valid_y)         
         
         evals = [(d_train, 'train'), (d_valid, 'valid')]
+        evals_result = {}
         xgb_model = xgb.train(xgb_params, d_train, 
-                              num_boost_round = 2000, evals = evals, 
+                              num_boost_round = xgb_rounds, evals = evals, 
                               early_stopping_rounds = 100, feval = _gini_xgb, 
-                              maximize = True, verbose_eval = 100)        
-        
+                              maximize = True, verbose_eval = 100,
+                              evals_result = evals_result)
+                
         xgb_submission['target'] += xgb_model.predict(d_test, ntree_limit = xgb_model.best_ntree_limit)
+        
+        result_train_gini = evals_result['train']
+        result_valid_gini = evals_result['valid']
+        for j in range(xgb_model.best_iteration+1):
+            train_gini = result_train_gini['gini'][j]
+            valid_gini = result_valid_gini['gini'][j]
+            ptr.print_log('round, train_gini, valid_gini: {04}, {0.6}, {0.6}'.format(j, train_gini, valid_gini))
         
     xgb_submission['target'] = xgb_submission['target'] / kfold
     gc.collect()
@@ -273,8 +252,8 @@ def main():
         #xgboost_tuner.tune(data_x, data_y)
         
         # lightgbm parameters tuning
-        lightgbm_tuner.tune(data_x, data_y)
-        
+        #lightgbm_tuner.tune(data_x, data_y)
+        pass
         
 ################################################################################
 if __name__ == "__main__":

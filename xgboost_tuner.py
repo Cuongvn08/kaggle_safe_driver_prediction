@@ -1,3 +1,7 @@
+'''
+http://xgboost.readthedocs.io/en/latest/how_to/param_tuning.html
+'''
+
 import xgboost as xgb
 import printer as ptr
 
@@ -94,7 +98,7 @@ def _tune_max_depth__min_child_weight(params, d_train):
                       format(max_depth, min_child_weight, auc, rounds))
         
         # check auc
-        if auc < max_auc:
+        if auc > max_auc:
             max_auc = auc
             best_max_depth = max_depth
             best_min_child_weight = min_child_weight

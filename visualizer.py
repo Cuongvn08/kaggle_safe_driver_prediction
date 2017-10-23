@@ -2,39 +2,43 @@ import numpy as np
 import pandas as pd
 from collections import Counter
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 import seaborn as sns
 import gc
+from sklearn.ensemble import RandomForestClassifier
+import xgboost as xgb
+
 
 np.set_printoptions(threshold = np.nan)
-
 
 def visualize():
     # config
     train_path = 'C:/data/kaggle/safe_driver_prediction/train.csv'
 
     # load data
+    print('\nloading data ... ')
     train_df = pd.read_csv(train_path)
     train_df.drop(['id'], axis = 1, inplace = True)
-    print('\ntrain shape: ', train_df.shape)
-    print('\nfeature types: ', Counter(train_df.dtypes.values))
-    print('\nfeatures: ')
+    print('train shape: ', train_df.shape)
+    print('feature types: ', Counter(train_df.dtypes.values))
+    print('features: ')
     for feature in train_df:
         print(' ', feature)
 
     # check NA ratio
-    # replace -1 by NA because -1 in data indicate that the feature was missing    
+    # replace -1 by NA because -1 in data indicate that the feature was missing 
+    print('\nchecking NA ratio ... ')
     train_df_copied = train_df
     train_df_copied = train_df_copied.replace(-1, np.NaN) # Values of -1 indicate that the feature was missing from the observation"
 
     na_ratio = (train_df_copied.isnull().sum() / len(train_df_copied)).sort_values(ascending=False)
-    print('\nNA ratio: ')
+    print('NA ratio: ')
     print(na_ratio)
 
     del train_df_copied
     gc.collect()
     
     # show the target feature
+    print('\ndislaying the target feature ... ')
     zero_count = (train_df['target']==0).sum()
     one_count = (train_df['target']==1).sum()
     plt.bar(np.arange(2), [zero_count, one_count])
@@ -43,7 +47,8 @@ def visualize():
     print('target 0: ', zero_count)
     print('target 1: ', one_count)
     
-    # correlation between continuous features
+    # compute features's correlation
+    print('\ncomputing correlation of the features ... ')
     f, ax = plt.subplots(figsize = (15, 15))
     plt.title('correlation of continuous features')
     sns.heatmap(train_df.corr(), ax = ax)
@@ -56,21 +61,54 @@ def visualize():
             print(pair, value)
     
     # binary features inpection
+    print('\n inspecting binary features ... ')
     bin_cols = [col for col in train_df.columns if '_bin' in col]
     zero_list = []
     one_list = []
     for col in bin_cols:
         zero_list.append((train_df[col]==0).sum())
         one_list.append((train_df[col]==1).sum())
-    
-    fig, ax = plt.subplots(figsize = (10, 10))
-    p1 = ax.bar(range(len(bin_cols)), zero_list, width = 0.5, color=(1.0,0.0,0.0))
-    p2 = ax.bar(range(len(bin_cols)), one_list, width = 0.5, color=(0.0,1.0,0.0))
-    ax.set_xticklabels(bin_cols, rotation=40)
-    red_patch = mpatches.Patch(color='red', label='zero count')
-    green_patch = mpatches.Patch(color='green', label='one count')
-    plt.legend(handles=[red_patch, green_patch])
+        
+    plt.figure(figsize = (10, 10))
+    p1 = plt.bar(np.arange(len(bin_cols)), zero_list, width = 0.5)
+    p2 = plt.bar(np.arange(len(bin_cols)), one_list, bottom = zero_list, width = 0.5)
+    plt.xticks(np.arange(len(bin_cols)), bin_cols, rotation = 90)
+    plt.legend((p1[0], p2[0]), ('zero count', 'one count'))
     plt.show()
+    
+    # compute feature importance
+    print('\n computing feature importance ... ')
+    xgb_params = {
+        'eta': 0.05,
+        'max_depth': 8,
+        'subsample': 0.7,
+        'colsample_bytree': 0.7,
+        'objective': 'reg:linear',
+        'silent': 1,
+        'seed' : 0
+    }
+    
+    train_y = train_df['target'].values
+    train_x = train_df.drop(['target'], axis=1)
+
+    d_train = xgb.DMatrix(train_x, train_y, feature_names=train_x.columns.values)
+    model = xgb.train(dict(xgb_params, silent=0), d_train, num_boost_round = 100)
+    
+    importance = model.get_fscore()
+    features_df = pd.DataFrame()
+    features_df['feature'] = importance.keys()
+    features_df['fscore'] = importance.values()
+    features_df['fscore'] = features_df['fscore'] / features_df['fscore'].sum()
+    features_df.sort_values(by = ['fscore'], ascending = True, inplace = True)
+    
+    plt.figure()
+    features_df.plot(kind = 'barh', x = 'feature', y='fscore', legend = False, figsize = (10, 10))
+    plt.title('XGBoost Feature Importance')
+    plt.xlabel('fscore')
+    plt.ylabel('features')
+    plt.show()
+
+    print(features_df)
     
     
     # release
@@ -87,9 +125,7 @@ if __name__ == "__main__":
 Notes from visualization:
 
 train shape:  (595212, 58)
-
 feature types:  Counter({dtype('int64'): 48, dtype('float64'): 10})
-
 features: 
   target
   ps_ind_01
@@ -150,7 +186,8 @@ features:
   ps_calc_19_bin
   ps_calc_20_bin
   
-NA ratio: 
+  
+checking NA ratio ... 
     ps_car_03_cat     0.690898
     ps_car_05_cat     0.447825
     ps_reg_03         0.181065
@@ -161,9 +198,55 @@ NA ratio:
     ps_ind_02_cat     0.000363
     ps_car_01_cat     0.000180
     ps_ind_04_cat     0.000139
-    ps_car_02_cat     0.000008
     ps_car_11         0.000008
+    ps_car_02_cat     0.000008
     ps_car_12         0.000002
+    ps_ind_17_bin     0.000000
+    ps_reg_02         0.000000
+    ps_reg_01         0.000000
+    ps_ind_18_bin     0.000000
+    ps_ind_14         0.000000
+    ps_ind_16_bin     0.000000
+    ps_ind_15         0.000000
+    ps_ind_13_bin     0.000000
+    ps_ind_12_bin     0.000000
+    ps_ind_11_bin     0.000000
+    ps_ind_10_bin     0.000000
+    ps_ind_09_bin     0.000000
+    ps_ind_08_bin     0.000000
+    ps_ind_07_bin     0.000000
+    ps_ind_06_bin     0.000000
+    ps_ind_03         0.000000
+    ps_ind_01         0.000000
+    ps_car_04_cat     0.000000
+    ps_calc_20_bin    0.000000
+    ps_car_06_cat     0.000000
+    ps_calc_19_bin    0.000000
+    ps_calc_18_bin    0.000000
+    ps_calc_17_bin    0.000000
+    ps_calc_16_bin    0.000000
+    ps_calc_15_bin    0.000000
+    ps_calc_14        0.000000
+    ps_calc_13        0.000000
+    ps_calc_12        0.000000
+    ps_calc_11        0.000000
+    ps_calc_10        0.000000
+    ps_calc_09        0.000000
+    ps_calc_08        0.000000
+    ps_calc_07        0.000000
+    ps_calc_06        0.000000
+    ps_calc_05        0.000000
+    ps_calc_04        0.000000
+    ps_calc_03        0.000000
+    ps_calc_02        0.000000
+    ps_calc_01        0.000000
+    ps_car_15         0.000000
+    ps_car_13         0.000000
+    ps_car_11_cat     0.000000
+    ps_car_10_cat     0.000000
+    ps_car_08_cat     0.000000
+    target            0.000000
+
 
 Distribution of target:
     0 count:  573518
@@ -224,10 +307,64 @@ Pairs of low correlation (<-0.3):
     ('ps_ind_18_bin', 'ps_ind_16_bin') -0.594265432744
     ('ps_ind_16_bin', 'ps_ind_18_bin') -0.594265432744    
     
+    
+feature importance:
+               feature    fscore
+    12   ps_ind_10_bin  0.001165
+    27   ps_ind_11_bin  0.001573
+    53  ps_calc_16_bin  0.002330
+    50  ps_calc_15_bin  0.002330
+    47  ps_calc_20_bin  0.002330
+    55  ps_calc_18_bin  0.002738
+    37   ps_ind_13_bin  0.002796
+    45   ps_ind_18_bin  0.003204
+    44  ps_calc_19_bin  0.003204
+    56  ps_calc_17_bin  0.003262
+    21   ps_car_08_cat  0.003670
+    48   ps_ind_09_bin  0.004252
+    28   ps_car_02_cat  0.004310
+    31       ps_ind_14  0.004543
+    52   ps_ind_12_bin  0.005126
+    54   ps_car_10_cat  0.005126
+    11   ps_ind_06_bin  0.005883
+    38   ps_ind_08_bin  0.006000
+    49   ps_car_05_cat  0.006640
+    7    ps_car_07_cat  0.007456
+    36   ps_ind_16_bin  0.007689
+    1    ps_ind_17_bin  0.008155
+    26   ps_ind_07_bin  0.008621
+    51       ps_car_11  0.009378
+    22   ps_car_03_cat  0.009727
+    4    ps_ind_04_cat  0.010718
+    5    ps_car_04_cat  0.011125
+    25   ps_car_09_cat  0.014271
+    41      ps_calc_02  0.015086
+    35      ps_calc_04  0.015203
+    30      ps_calc_12  0.015669
+    40      ps_calc_06  0.016018
+    39      ps_calc_01  0.016601
+    20      ps_calc_05  0.017533
+    46      ps_calc_03  0.018173
+    15      ps_calc_08  0.018756
+    18      ps_calc_09  0.018814
+    34   ps_ind_02_cat  0.019105
+    32       ps_car_15  0.019222
+    19      ps_calc_07  0.020212
+    17      ps_calc_13  0.021377
+    43   ps_car_06_cat  0.021610
+    10       ps_reg_01  0.022134
+    9    ps_ind_05_cat  0.025629
+    24   ps_car_11_cat  0.026503
+    33   ps_car_01_cat  0.027377
+    23      ps_calc_11  0.028774
+    3       ps_calc_10  0.031512
+    14       ps_car_12  0.031803
+    16      ps_calc_14  0.031978
+    8        ps_ind_15  0.032794
+    6        ps_reg_02  0.033434
+    13       ps_ind_01  0.041181
+    42       ps_ind_03  0.042870
+    29       ps_car_14  0.044443
+    2        ps_reg_03  0.074091
+    0        ps_car_13  0.094478    
 '''
-
-
-
-
-
-

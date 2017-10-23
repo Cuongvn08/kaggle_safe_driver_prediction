@@ -1,16 +1,23 @@
+'''
+http://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html
+'''
+
 import numpy as np
 import lightgbm as lgb
 import printer as ptr
 
 
+# default settings for cv()
 num_boost_round = 5000
 nfold = 5
 metrics = {'auc'}
 early_stopping_rounds = 10
 
 
+# tune lightgbm parameters
 def tune(data_x, data_y):
-    ptr.print_log('Tuning lightgbm parameters ...')
+    ptr.print_log('\n')
+    ptr.print_log('LIGHTGBM parameters are tuning ...')
     
     d_train = lgb.Dataset(data_x, label=data_y)
     
@@ -23,30 +30,36 @@ def tune(data_x, data_y):
     best_learning_rate = _tune_learning_rate(params, d_train)
     params['learning_rate'] = best_learning_rate
     
-    # tune max_depth and num_samples_split
-    best_max_depth, best_num_samples_split = \
-                            _tune_max_depth__num_samples_split(params, d_train)
-    params['max_depth'] = best_max_depth
-    params['num_samples_split'] = best_num_samples_split
+    # tune max_depth and num_leaves
+    max_depth, num_leaves = _tune_max_depth__num_leaves(params, d_train)
+    params['max_depth'] = max_depth
+    params['num_leaves'] = num_leaves
     
-    # tune min_samples_leaf
-    best_min_samples_leaf = _tune_min_samples_leaf(params, d_train)
-    params['min_samples_leaf'] = best_min_samples_leaf
+    # tune min_data_in_leaf
+    min_data_in_leaf = _tune_min_data_in_leaf(params, d_train)
+    params['min_data_in_leaf'] = min_data_in_leaf
+
+    # tune max_bin
+    max_bin = _tune_max_bin(params, d_train)
+    params['max_bin'] = max_bin
     
-    # tune max_features
-    best_max_features = _tune_max_features(params, d_train)
-    params['max_features'] = best_max_features
+    # tune bagging_fraction and bagging_freq
+    bagging_fraction, bagging_freq = _tune_bagging_fraction__bagging_freq(params, d_train)
+    params['bagging_fraction'] = bagging_fraction
+    params['bagging_freq'] = bagging_freq
     
-    # tune subsample
-    best_subsample = _tune_subsample(params, d_train)
-    params['sub_sample'] = best_subsample
+    # tune feature_fraction
+    feature_fraction = _tune_feature_fraction(params, d_train)    
+    params['feature_fraction'] = feature_fraction
     
     # end
     ptr.print_log('LIGHTGBM TUNER was finished.')
+    ptr.print_log('\n')
     
     
+# tune learning rate    
 def _tune_learning_rate(params, d_train):
-    ptr.print_log('Tuning learning rate ...')
+    ptr.print_log('Tuning learning_rate ...')
     
     learning_rate_list = [0.2, 0.1, 0.05, 0.025, 0.005, 0.0025]
     max_auc = 0.0
@@ -66,129 +79,168 @@ def _tune_learning_rate(params, d_train):
             max_auc = auc
             best_learning_rate = learning_rate
         
-    print('best learning rate:', best_learning_rate)
-    print('max auc:', max_auc)
-    
+    ptr.print_log('best learning_rate: {0}'.format(best_learning_rate))
+    ptr.print_log('max auc: {}'.format(max_auc))
+        
     return best_learning_rate
 
 
-def _tune_max_depth__num_samples_split(params, d_train):
-    ptr.print_log('Tuning max depth and num samples split ...')
+# tune max_depth and num_leaves
+def _tune_max_depth__num_leaves(params, d_train):
+    ptr.print_log('Tuning max_depth and num_leaves ...')
 
-    max_depth_list = list(range(5,10))
-    num_samples_split_list = list(range(200,1001,200))
+    max_depth_list = list(range(4,9))
+    num_leaves_list = list(range(30,121,10))
     
     max_auc = 0.0
     best_max_depth = max_depth_list[0]
-    best_num_samples_split = num_samples_split_list[0]
+    best_num_leaves = num_leaves_list[0]
     
-    for max_depth, num_samples_split in zip(max_depth_list, num_samples_split_list):
+    for max_depth, num_leaves in zip(max_depth_list, num_leaves_list):
         # update params
         params['max_depth'] = max_depth
-        params['num_samples_split'] = num_samples_split
+        params['num_leaves'] = num_leaves
         
         # run cv
         auc, rounds = _run_cv(params, d_train)
-        ptr.print_log('max_depth: {0}; num_sample_split: {1}; auc: {2}; rounds: {3}'.\
-                      format(max_depth, num_samples_split, auc, rounds))
+        ptr.print_log('max_depth: {0}; num_leaves: {1}; auc: {2}; rounds: {3}'.\
+                      format(max_depth, num_leaves, auc, rounds))
 
         # check auc
         if auc > max_auc:
             max_auc = auc
             best_max_depth = max_depth
-            best_num_samples_split = num_samples_split
+            best_num_leaves = num_leaves
 
-    print('best max depth:', best_max_depth)
-    print('best num samples split:', best_num_samples_split)
-    print('max auc:', max_auc)
+    ptr.print_log('best max_depth: {0}'.format(best_max_depth))
+    ptr.print_log('best num_leaves: {0}'.format(best_num_leaves))
+    ptr.print_log('max auc: {}'.format(max_auc))
     
-    return best_max_depth, best_num_samples_split
+    return best_max_depth, best_num_leaves
         
 
-def _tune_min_samples_leaf(params, d_train):
-    ptr.print_log('Tuning min samples leaf ...')
+# tune min_data_in_leaf
+def _tune_min_data_in_leaf(params, d_train):
+    ptr.print_log('Tuning min_data_in_leaf...')
 
-    min_samples_leaf_list = list(range(30,71,10))
+    min_data_in_leaf_list = list(range(100,1001,100))
     
     max_auc = 0.0
-    best_min_samples_leaf = min_samples_leaf_list[0]
+    best_min_data_in_leaf = min_data_in_leaf_list[0]
     
-    for min_samples_leaf in min_samples_leaf_list:
+    for min_data_in_leaf in min_data_in_leaf_list:
         # update params
-        params['min_samples_leaf'] = min_samples_leaf
+        params['min_data_in_leaf'] = min_data_in_leaf
         
         # run cv
         auc, rounds = _run_cv(params, d_train)
-        ptr.print_log('min_samples_leaf: {0}; auc: {1}; rounds: {2}'.\
-                      format(min_samples_leaf, auc, rounds))
+        ptr.print_log('min_data_in_leaf: {0}; auc: {1}; rounds: {2}'.\
+                      format(min_data_in_leaf, auc, rounds))
         
         # check auc
         if auc > max_auc:
             max_auc = auc
-            best_min_samples_leaf = min_samples_leaf
+            best_min_data_in_leaf = min_data_in_leaf
         
-    print('best min samples leaf:', best_min_samples_leaf)
-    print('max auc:', max_auc)
+    ptr.print_log('best min_data_in_leaf: {0}'.format(best_min_data_in_leaf))
+    ptr.print_log('max auc: {}'.format(max_auc))
     
-    return best_min_samples_leaf
+    return best_min_data_in_leaf
 
 
-def _tune_max_features(params, d_train):
-    ptr.print_log('Tuning max features ...')
-
-    max_features_list = list(range(7,20,2))
+# tune max_bin
+def _tune_max_bin(params, d_train):
+    ptr.print_log('Tuning max_bin...')
+    
+    max_bin_list = list(range(50,301,50))
     
     max_auc = 0.0
-    best_max_features = max_features_list[0]
+    best_max_bin = max_bin_list[0]
     
-    for max_features in max_features_list:
+    for max_bin in max_bin_list:
         # update params
-        params['max_features'] = max_features
+        params['max_bin'] = max_bin
         
         # run cv
         auc, rounds = _run_cv(params, d_train)
-        ptr.print_log('max_features: {0}; auc: {1}; rounds: {2}'.\
-                      format(max_features, auc, rounds))
+        ptr.print_log('max_bin: {0}; auc: {1}; rounds: {2}'.\
+                      format(max_bin, auc, rounds))
         
         # check auc
         if auc > max_auc:
             max_auc = auc
-            best_max_features = max_features
-        
-    print('best max features:', best_max_features)
-    print('max auc:', max_auc)
+            best_max_bin = max_bin
+                    
+    ptr.print_log('best max_bin: {0}'.format(best_max_bin))
+    ptr.print_log('max auc: {}'.format(max_auc))
     
-    return best_max_features
-
-
-def _tune_subsample(params, d_train):
-    ptr.print_log('Tuning subsample ...')
-
-    subsample_list = [0.6,0.7,0.75,0.8,0.85,0.9]
+    return best_max_bin
+    
+  
+# tune bagging_fraction and bagging_freq    
+def _tune_bagging_fraction__bagging_freq(params, d_train):
+    ptr.print_log('Tuning bagging_fraction and bagging_freq ...')
+    
+    bagging_fraction_list = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    bagging_freq_list = list(range(0,51,10))
     
     max_auc = 0.0
-    best_subsample = subsample_list[0]
-    
-    for subsample in subsample_list:
+    best_bagging_fraction = bagging_fraction_list[0]
+    best_bagging_freq = bagging_freq_list[0]
+
+    for bagging_fraction, bagging_freq in zip(bagging_fraction_list, best_bagging_freq):
         # update params
-        params['subsample'] = subsample
+        params['bagging_fraction'] = bagging_fraction
+        params['bagging_freq'] = bagging_freq
         
         # run cv
         auc, rounds = _run_cv(params, d_train)
-        ptr.print_log('subsample: {0}; auc: {1}; rounds: {2}'.\
-                      format(subsample, auc, rounds))
+        ptr.print_log('bagging_fraction: {0}; bagging_freq: {1}; auc: {2}; rounds: {3}'.\
+                      format(bagging_fraction, bagging_freq, auc, rounds))
+
+        # check auc
+        if auc > max_auc:
+            max_auc = auc
+            best_bagging_fraction = bagging_fraction
+            best_bagging_freq = bagging_freq
+    
+    ptr.print_log('best bagging_fraction: {0}'.format(best_bagging_fraction))
+    ptr.print_log('best bagging_freq: {0}'.format(best_bagging_freq))
+    ptr.print_log('max auc: {}'.format(max_auc))    
+    
+    return best_bagging_fraction, best_bagging_freq
+
+
+# tune feature_fraction
+def _tune_feature_fraction(params, d_train):
+    ptr.print_log('Tuning feature_fraction ...')
+    
+    feature_fraction_list = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    
+    max_auc = 0.0
+    best_feature_fraction = feature_fraction_list[0]
+
+    for feature_fraction in feature_fraction_list:
+        # update params
+        params['feature_fraction'] = feature_fraction
+        
+        # run cv
+        auc, rounds = _run_cv(params, d_train)
+        ptr.print_log('feature_fraction: {0}; auc: {1}; rounds: {2}'.\
+                      format(feature_fraction, auc, rounds))
         
         # check auc
         if auc > max_auc:
             max_auc = auc
-            best_subsample = subsample
-        
-    print('best subsample:', best_subsample)
-    print('max auc:', max_auc)
+            best_feature_fraction = feature_fraction
+                    
+    ptr.print_log('best feature_fraction: {0}'.format(best_feature_fraction))
+    ptr.print_log('max auc: {}'.format(max_auc))
     
-    return best_subsample
+    return best_feature_fraction
 
-
+   
+# run cv with given parameters    
 def _run_cv(params, d_train):
     cv_results = lgb.cv(params,
                         d_train,
