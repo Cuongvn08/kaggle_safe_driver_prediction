@@ -29,15 +29,15 @@ class Settings(Enum):
     global test_path
     global submission_path
     global IS_PARAMS_TUNNING
-    global XGB_WEIGHT
-    global LGB_WEIGHT
+    #global XGB_WEIGHT
+    #global LGB_WEIGHT
     
-    train_path      = 'C:/data/kaggle/safe_driver_prediction/train.csv'
-    test_path       = 'C:/data/kaggle/safe_driver_prediction/test.csv'
-    submission_path = 'C:/data/kaggle/safe_driver_prediction/sample_submission.csv'
+    train_path      = '/data/kaggle/safe_driver_prediction/train.csv'
+    test_path       = '/data/kaggle/safe_driver_prediction/test.csv'
+    submission_path = '/data/kaggle/safe_driver_prediction/sample_submission.csv'
     IS_PARAMS_TUNNING = False
-    XGB_WEIGHT = 1.0
-    LGB_WEIGHT = 1 - XGB_WEIGHT
+    #XGB_WEIGHT = 1.0
+    #LGB_WEIGHT = 1 - XGB_WEIGHT
     
     def __str__(self):
         return self.value
@@ -268,11 +268,15 @@ def _gini_lgb(preds, dtrain):
 def generate_submission():
     ptr.print_log('STEP4: generating submission ...')
 
-    submission = pd.read_csv(submission_path)
-    submission['target'] = xgb_pred*XGB_WEIGHT + lgb_pred*LGB_WEIGHT
+    XGB_WEIGHT_LIST = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0]
+    LGB_WEIGHT_LIST = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+
+    for XGB_WEIGHT, LGB_WEIGHT in zip(XGB_WEIGHT_LIST, LGB_WEIGHT_LIST):
+        submission = pd.read_csv(submission_path)
+        submission['target'] = xgb_pred*XGB_WEIGHT + lgb_pred*LGB_WEIGHT
     
-    submission.to_csv('sub{}.csv'.format(datetime.now().\
-            strftime('%Y%m%d_%H%M%S')), index=False, float_format='%.5f')
+        submission.to_csv('sub{}_{}_{}.csv'.format(datetime.now().strftime('%Y%m%d_%H%M%S'), XGB_WEIGHT, LGB_WEIGHT), 
+                          index=False, float_format='%.5f')
     
     
 ################################################################################
