@@ -150,10 +150,9 @@ def build_model():
         'lambda': 4.0,
         'silent': 1
     }
-    xgb_rounds = 2108
-    
+        
     # lightgbm params
-    # tuned with kfold=5: max auc: 0.6397383698465186, rounds: 3671
+    # tuned with kfold=5: max auc: 0.6397383698465186
     lgb_params = {
         'objective': 'binary',
         'metric' : 'auc',
@@ -164,8 +163,7 @@ def build_model():
         'max_bin' : 50,
         'verbosity' : 0
     }
-    lgb_rounds = 3671
-
+    
         
 ################################################################################    
 ## STEP3: train and predict with kfold   
@@ -194,10 +192,10 @@ def train_predict():
         evals = [(d_train, 'train'), (d_valid, 'valid')]
         evals_result = {}
         xgb_model = xgb.train(xgb_params, d_train, 
-                              num_boost_round = xgb_rounds, evals = evals, 
-                              early_stopping_rounds = 100, feval = _gini_xgb, 
-                              maximize = True, verbose_eval = 100,
-                              evals_result = evals_result)
+                              num_boost_round = 10000,
+                              evals = evals, feval = _gini_xgb,
+                              evals_result = evals_result,
+                              maximize = True, early_stopping_rounds = 100, verbose_eval = 100)
                 
         xgb_pred += xgb_model.predict(d_test, ntree_limit = xgb_model.best_ntree_limit)
         
@@ -229,10 +227,10 @@ def train_predict():
         evals_result = {}
         
         lgb_model = lgb.train(lgb_params, d_train,
-                              num_boost_round = lgb_rounds,
+                              num_boost_round = 10000,
                               valid_sets = valid_sets, valid_names = valid_names,
                               feval = _gini_lgb, evals_result = evals_result,
-                              verbose_eval = 100)
+                              early_stopping_rounds = 100, verbose_eval = 100)
         
         lgb_pred += lgb_model.predict(test_x, num_iteration = lgb_model.best_iteration)
         
