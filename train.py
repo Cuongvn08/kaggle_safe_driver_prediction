@@ -30,14 +30,14 @@ class Settings(Enum):
     global submission_path
     global IS_PARAMS_TUNNING
     global XGB_WEIGHT
-    global GBM_WEIGHT
+    global LGB_WEIGHT
     
     train_path      = 'C:/data/kaggle/safe_driver_prediction/train.csv'
     test_path       = 'C:/data/kaggle/safe_driver_prediction/test.csv'
     submission_path = 'C:/data/kaggle/safe_driver_prediction/sample_submission.csv'
     IS_PARAMS_TUNNING = False
-    XGB_WEIGHT = 0.6
-    GBM_WEIGHT = 1 - XGB_WEIGHT
+    XGB_WEIGHT = 1.0
+    LGB_WEIGHT = 1 - XGB_WEIGHT
     
     def __str__(self):
         return self.value
@@ -76,9 +76,9 @@ def process_data():
     data_y = data_y.values
     test_x = test_x.values
     
-    print('train x shape: ', data_x.shape)
-    print('train y shape: ', data_y.shape)
-    print('test x shape : ', test_x.shape)
+    ptr.print_log('train x shape: {}'.format(data_x.shape))
+    ptr.print_log('train y shape: {}'.format(data_y.shape))
+    ptr.print_log('test x shape : {}'.format(test_x.shape))
     
     # release
     del train_df
@@ -153,17 +153,18 @@ def build_model():
     xgb_rounds = 2108
     
     # lightgbm params
+    # tuned with kfold=5: max auc: 0.6397383698465186, rounds: 3671
     lgb_params = {
         'objective': 'binary',
         'metric' : 'auc',
         'learning_rate' : 0.0025,
-        'max_depth' : 100,
-        'num_leaves' : 32,
-        'feature_fraction' : .85,
-        'bagging_fraction' : .95,
-        'bagging_freq' : 8,
+        'max_depth' : 6,
+        'num_leaves' : 50,
+        'min_data_in_leaf' : 200,
+        'max_bin' : 50,
         'verbosity' : 0
     }
+    lgb_rounds = 3671
 
         
 ################################################################################    
@@ -171,24 +172,24 @@ def build_model():
 def train_predict():
     ptr.print_log('STEP3: training ...')
     
-    global xgb_submission
-    xgb_submission = pd.read_csv(submission_path)
-    xgb_submission['target'] = 0
-    
+    global xgb_pred
+    global lgb_pred
+        
     kfold = 5
     
     # xgboost
+    xgb_pred = 0.0
     d_test = xgb.DMatrix(test_x)
-    skf = StratifiedKFold(n_splits=kfold, random_state=0)
+    skf = StratifiedKFold(n_splits=kfold)
     
     for i, (train_index, valid_index) in enumerate(skf.split(data_x, data_y)):
         ptr.print_log('xgboost kfold: {}'.format(i+1))
-        
+
         train_x, valid_x = data_x[train_index], data_x[valid_index]
         train_y, valid_y = data_y[train_index], data_y[valid_index]
-        
+                
         d_train = xgb.DMatrix(train_x, train_y) 
-        d_valid = xgb.DMatrix(valid_x, valid_y)         
+        d_valid = xgb.DMatrix(valid_x, valid_y)
         
         evals = [(d_train, 'train'), (d_valid, 'valid')]
         evals_result = {}
@@ -198,21 +199,53 @@ def train_predict():
                               maximize = True, verbose_eval = 100,
                               evals_result = evals_result)
                 
-        xgb_submission['target'] += xgb_model.predict(d_test, ntree_limit = xgb_model.best_ntree_limit)
+        xgb_pred += xgb_model.predict(d_test, ntree_limit = xgb_model.best_ntree_limit)
         
         result_train_gini = evals_result['train']
         result_valid_gini = evals_result['valid']
         for j in range(xgb_model.best_iteration+1):
             train_gini = result_train_gini['gini'][j]
             valid_gini = result_valid_gini['gini'][j]
-            ptr.print_log('round, train_gini, valid_gini: {04}, {0.6}, {0.6}'.format(j, train_gini, valid_gini))
+            ptr.print_log('round, train_gini, valid_gini: {0:04}, {1:0.6}, {2:0.6}'.format(j, train_gini, valid_gini), False)
         
-    xgb_submission['target'] = xgb_submission['target'] / kfold
+    xgb_pred = xgb_pred / kfold
     gc.collect()
-    
-    # lightgbm
-    # TBD
         
+    # lightgbm
+    lgb_pred = 0.0
+    skf = StratifiedKFold(n_splits=kfold)
+
+    for i, (train_index, valid_index) in enumerate(skf.split(data_x, data_y)):
+        ptr.print_log('lightgbm kfold: {}'.format(i+1))
+        
+        train_x, valid_x = data_x[train_index], data_x[valid_index]
+        train_y, valid_y = data_y[train_index], data_y[valid_index]
+        
+        d_train = lgb.Dataset(train_x, train_y) 
+        d_valid = lgb.Dataset(valid_x, valid_y)
+
+        valid_sets = [d_train, d_valid]
+        valid_names = ['train', 'valid']
+        evals_result = {}
+        
+        lgb_model = lgb.train(lgb_params, d_train,
+                              num_boost_round = lgb_rounds,
+                              valid_sets = valid_sets, valid_names = valid_names,
+                              feval = _gini_lgb, evals_result = evals_result,
+                              verbose_eval = 100)
+        
+        lgb_pred += lgb_model.predict(test_x, num_iteration = lgb_model.best_iteration)
+        
+        result_train_gini = evals_result['train']
+        result_valid_gini = evals_result['valid']
+        for j in range(lgb_model.best_iteration+1):
+            train_gini = result_train_gini['gini'][j]
+            valid_gini = result_valid_gini['gini'][j]
+            ptr.print_log('round, train_gini, valid_gini: {0:04}, {1:0.6}, {2:0.6}'.format(j, train_gini, valid_gini), False)        
+        
+    lgb_pred = lgb_pred / kfold
+    gc.collect()
+
 def _gini(y, pred):
     g = np.asarray(np.c_[y, pred, np.arange(len(y)) ], dtype=np.float)
     g = g[np.lexsort((g[:,2], -1*g[:,1]))]
@@ -234,8 +267,11 @@ def _gini_lgb(preds, dtrain):
 ## STEP4: generate submission    
 def generate_submission():
     ptr.print_log('STEP4: generating submission ...')
+
+    submission = pd.read_csv(submission_path)
+    submission['target'] = xgb_pred*XGB_WEIGHT + lgb_pred*LGB_WEIGHT
     
-    xgb_submission.to_csv('sub{}.csv'.format(datetime.now().\
+    submission.to_csv('sub{}.csv'.format(datetime.now().\
             strftime('%Y%m%d_%H%M%S')), index=False, float_format='%.5f')
     
     
@@ -249,11 +285,11 @@ def main():
         generate_submission()
     else:
         # xgboost parameters tuning
-        #xgboost_tuner.tune(data_x, data_y)
+        xgboost_tuner.tune(data_x, data_y)
         
         # lightgbm parameters tuning
         #lightgbm_tuner.tune(data_x, data_y)
-        pass
+        
         
 ################################################################################
 if __name__ == "__main__":

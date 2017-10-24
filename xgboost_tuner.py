@@ -12,6 +12,7 @@ metrics = {'auc'}
 early_stopping_rounds = 10
 
 
+# tune
 def tune(data_x, data_y):
     ptr.print_log('Tuning xgboost parameters ...')
 
@@ -23,38 +24,34 @@ def tune(data_x, data_y):
     }
     
     # tune eta
-    if True:
-        best_eta = _tune_eta(params, d_train)
-        params['eta'] = best_eta
+    best_eta = _tune_eta(params, d_train)
+    params['eta'] = best_eta
     
     # tune max_depth and min_child_weight
-    if True:
-        best_max_depth, best_min_child_weight = \
-                        _tune_max_depth__min_child_weight(params, d_train)
-        params['max_depth'] = best_max_depth
-        params['min_child_weight'] = best_min_child_weight
+    best_max_depth, best_min_child_weight = _tune_max_depth__min_child_weight(params, d_train)
+    params['max_depth'] = best_max_depth
+    params['min_child_weight'] = best_min_child_weight
     
     # tune subsample and colsample_bytree
-    if True:
-        best_subsample, best_colsample_bytree = \
-                        _tune_subsample__colsample_bytree(params, d_train)
-        params['subsample'] = best_subsample
-        params['colsample_bytree'] = best_colsample_bytree
+    best_subsample, best_colsample_bytree = _tune_subsample__colsample_bytree(params, d_train)
+    params['subsample'] = best_subsample
+    params['colsample_bytree'] = best_colsample_bytree
     
     # tune alpha and lambda
-    if True:
-        best_alpha, best_lambda = _tune_alpha_lambda(params, d_train)
-        params['subsample'] = best_alpha
-        params['colsample_bytree'] = best_lambda
+    best_alpha, best_lambda = _tune_alpha_lambda(params, d_train)
+    params['subsample'] = best_alpha
+    params['colsample_bytree'] = best_lambda
         
     # end
     ptr.print_log('XGBOOST TUNER was finished.')
     
     
+# tune eta    
 def _tune_eta(params, d_train):
     ptr.print_log('Tuning eta ...')
     
     eta_list = [0.2, 0.1, 0.05, 0.025, 0.005, 0.0025]
+    
     max_auc = 0.0
     best_eta = eta_list[0]
     
@@ -64,8 +61,7 @@ def _tune_eta(params, d_train):
 
         # run cv
         auc, rounds = _run_cv(params, d_train)
-        ptr.print_log('eta: {0}; auc: {1}; rounds: {2}'.\
-                      format(eta, auc, rounds))
+        ptr.print_log('eta: {}; auc: {}; rounds: {}'.format(eta, auc, rounds))
         
         # check auc
         if auc > max_auc:
@@ -78,11 +74,13 @@ def _tune_eta(params, d_train):
     return best_eta
 
 
+# tune max_depth and min_child_weight
 def _tune_max_depth__min_child_weight(params, d_train):
     ptr.print_log('Tuning max_depth and min_child_weight ...')
     
     max_depth_list = list(range(5,10))
     min_child_weight_list = list(range(1,5))
+    
     max_auc = 0.0
     best_max_depth = max_depth_list[0]
     best_min_child_weight = min_child_weight_list[0]
@@ -94,7 +92,7 @@ def _tune_max_depth__min_child_weight(params, d_train):
         
         # run cv
         auc, rounds = _run_cv(params, d_train)
-        ptr.print_log('max_depth: {0}; min_child_weight: {1}; auc: {2}; rounds: {3}'.\
+        ptr.print_log('max_depth: {}; min_child_weight: {}; auc: {}; rounds: {}'.\
                       format(max_depth, min_child_weight, auc, rounds))
         
         # check auc
@@ -110,11 +108,13 @@ def _tune_max_depth__min_child_weight(params, d_train):
     return best_max_depth, best_min_child_weight
         
 
+# tune subsample and colsample_bytree
 def _tune_subsample__colsample_bytree(params, d_train):
     ptr.print_log('Tuning subsample and colsample_bytree ...')
     
     subsample_list = [0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
     colsample_bytree = [0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
+    
     max_auc = 0.0
     best_subsample = subsample_list[0]
     best_colsample_bytree = colsample_bytree[0]
@@ -126,7 +126,7 @@ def _tune_subsample__colsample_bytree(params, d_train):
         
         # run cv
         auc, rounds = _run_cv(params, d_train)
-        ptr.print_log('subsample: {0}; colsample_bytree: {1}; auc: {2}; rounds: {3}'.\
+        ptr.print_log('subsample: {}; colsample_bytree: {}; auc: {}; rounds: {}'.\
               format(subsample, colsample_bytree, auc, rounds))
                 
         # check auc
@@ -142,12 +142,14 @@ def _tune_subsample__colsample_bytree(params, d_train):
     return best_subsample, best_colsample_bytree
 
 
+# tune alpha and lambda
 def _tune_alpha_lambda(params, d_train):
     ptr.print_log('Tuning alpha and lambda ...')
     
     alpha_list = [0.0, 0.4, 0.8, 1.2, 1.6, 2.0, 2.4, 2.8]
     lambda_list = [2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0]
-    max_auc = float("Inf")
+    
+    max_auc = 0.0
     best_alpha = alpha_list[0]
     best_lambda = lambda_list[0]
     
@@ -158,7 +160,7 @@ def _tune_alpha_lambda(params, d_train):
         
         # run cv
         auc, rounds = _run_cv(params, d_train)
-        ptr.print_log('alpha: {0}; lambdaa: {1}; auc: {2}; rounds: {3}'.\
+        ptr.print_log('alpha: {}; lambdaa: {}; auc: {}; rounds: {}'.\
               format(alpha, lambdaa, auc, rounds))
         
         # check auc
@@ -172,6 +174,7 @@ def _tune_alpha_lambda(params, d_train):
     ptr.print_log('max auc: {0}'.format(max_auc))
     
     return alpha, lambdaa
+
 
 def _run_cv(params, d_train):
     cv_results = xgb.cv(

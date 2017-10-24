@@ -3,11 +3,11 @@ import pytz
 tz = tz=pytz.timezone('Asia/Seoul')
 
 
-def print_log(message, disable_print = False):
+def print_log(message, print_enable = True):
     date_time = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
 
     # print to console
-    if disable_print is True:
+    if print_enable is True:
         print(date_time, message)
     
     # log to file
