@@ -288,7 +288,7 @@ def main():
         xgboost_tuner.tune(data_x, data_y)
         
         # lightgbm parameters tuning
-        #lightgbm_tuner.tune(data_x, data_y)
+        lightgbm_tuner.tune(data_x, data_y)
         
         
 ################################################################################

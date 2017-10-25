@@ -4,9 +4,7 @@ from collections import Counter
 import matplotlib.pyplot as plt
 import seaborn as sns
 import gc
-from sklearn.ensemble import RandomForestClassifier
 import xgboost as xgb
-
 
 np.set_printoptions(threshold = np.nan)
 
@@ -46,6 +44,15 @@ def visualize():
     
     print('target 0: ', zero_count)
     print('target 1: ', one_count)
+    
+    # show feature's distribution
+    print('\ndislaying distribution of features ... ')
+    for feature in train_df:
+        plt.figure(figsize=(8,6))
+        plt.scatter(range(train_df.shape[0]), np.sort(train_df[feature].values))
+        plt.xlabel('index', fontsize=12)
+        plt.ylabel(feature, fontsize=12)
+        plt.show()    
     
     # compute features's correlation
     print('\ncomputing correlation of the features ... ')
