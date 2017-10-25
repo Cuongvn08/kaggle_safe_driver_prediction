@@ -29,15 +29,13 @@ class Settings(Enum):
     global test_path
     global submission_path
     global IS_PARAMS_TUNNING
-    #global XGB_WEIGHT
-    #global LGB_WEIGHT
-    
-    train_path      = '/data/kaggle/safe_driver_prediction/train.csv'
-    test_path       = '/data/kaggle/safe_driver_prediction/test.csv'
-    submission_path = '/data/kaggle/safe_driver_prediction/sample_submission.csv'
+
+   
+    train_path      = 'D:/data/safe_driver_prediction/train.csv'
+    test_path       = 'D:/data/safe_driver_prediction/test.csv'
+    submission_path = 'D:/data/safe_driver_prediction/sample_submission.csv'
     IS_PARAMS_TUNNING = False
-    #XGB_WEIGHT = 1.0
-    #LGB_WEIGHT = 1 - XGB_WEIGHT
+
     
     def __str__(self):
         return self.value
@@ -146,8 +144,8 @@ def build_model():
         'min_child_weight': 1,
         'subsample': 0.8,
         'colsample_bytree': 0.8,
-        'alpha': 0.4,
-        'lambda': 4.0,
+        'alpha': 2.4,
+        'lambda': 14.0,
         'silent': 1
     }
         
