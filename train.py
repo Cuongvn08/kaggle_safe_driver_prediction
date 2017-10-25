@@ -31,9 +31,9 @@ class Settings(Enum):
     global IS_PARAMS_TUNNING
 
    
-    train_path      = 'D:/data/safe_driver_prediction/train.csv'
-    test_path       = 'D:/data/safe_driver_prediction/test.csv'
-    submission_path = 'D:/data/safe_driver_prediction/sample_submission.csv'
+    train_path      = 'C:/data/kaggle/safe_driver_prediction/train.csv'
+    test_path       = 'C:/data/kaggle/safe_driver_prediction/test.csv'
+    submission_path = 'C:/data/kaggle/safe_driver_prediction/sample_submission.csv'
     IS_PARAMS_TUNNING = False
 
     
@@ -55,15 +55,21 @@ def process_data():
         
     # fill NA: nothing to do because the missing cells were already filled with -1
     
-    # encode features: TBD
-        
-    # add features: TBD
+    # encode features
+
+    # add features
+    _add_features(train_df)
+    _add_features(test_df)
     
-    # remove outliers: TBD
+    # remove outliers
+    _remove_outliers(train_df)
+    _remove_outliers(test_df)
     
-    # select features: TBD
+    # select and drop features
+    _select_drop_features(train_df)
+    _select_drop_features(test_df)
     
-    # prepare train and valid data: TBD
+    # prepare train and valid data
     ptr.print_log('Preparing train and test data ...')
     
     data_y = train_df['target']
@@ -120,9 +126,26 @@ def _add_features(df):
 def _remove_outliers(df):
     ptr.print_log('Removing features ...')
     
-def _select_features(df):
-    ptr.print_log('Selecting features ...')
+def _select_drop_features(df):
+    ptr.print_log('Selecting and dropping features according to feature importance ...')
     
+    drop_features = ['ps_ind_10_bin',
+                     'ps_ind_11_bin',
+                     'ps_calc_16_bin',
+                     'ps_calc_15_bin',
+                     'ps_calc_20_bin',
+                     'ps_calc_18_bin',
+                     'ps_ind_13_bin',
+                     'ps_ind_18_bin',
+                     'ps_calc_19_bin',
+                     'ps_calc_17_bin',
+                     'ps_car_08_cat',
+                     'ps_ind_09_bin',
+                     'ps_car_02_cat',
+                     'ps_ind_14']
+    
+    df.drop(drop_features, axis=1, inplace=True)
+
     
 ################################################################################        
 ## STEP2: build model
