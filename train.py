@@ -31,9 +31,9 @@ class Settings(Enum):
     global IS_PARAMS_TUNNING
 
    
-    train_path      = 'D:/data/safe_driver_prediction/train.csv'
-    test_path       = 'D:/data/safe_driver_prediction/test.csv'
-    submission_path = 'D:/data/safe_driver_prediction/sample_submission.csv'
+    train_path      = '/data/kaggle/safe_driver_prediction/train.csv'
+    test_path       = '/data/kaggle/safe_driver_prediction/test.csv'
+    submission_path = '/data/kaggle/safe_driver_prediction/sample_submission.csv'
     IS_PARAMS_TUNNING = False
 
     
@@ -224,13 +224,14 @@ def train_predict():
                 
         xgb_pred += xgb_model.predict(d_test, ntree_limit = xgb_model.best_ntree_limit)
         
-        result_train_gini = evals_result['train']
-        result_valid_gini = evals_result['valid']
-        for j in range(xgb_model.best_iteration+1):
-            train_gini = result_train_gini['gini'][j]
-            valid_gini = result_valid_gini['gini'][j]
-            ptr.print_log('round, train_gini, valid_gini: {0:04}, {1:0.6}, {2:0.6}'.format(j, train_gini, valid_gini), False)
-        
+        if False:
+            result_train_gini = evals_result['train']
+            result_valid_gini = evals_result['valid']
+            for j in range(xgb_model.best_iteration+1):
+                train_gini = result_train_gini['gini'][j]
+                valid_gini = result_valid_gini['gini'][j]
+                ptr.print_log('round, train_gini, valid_gini: {0:04}, {1:0.6}, {2:0.6}'.format(j, train_gini, valid_gini), False)
+            
     xgb_pred = xgb_pred / kfold
     gc.collect()
         
@@ -292,13 +293,13 @@ def _gini_lgb(preds, dtrain):
 def generate_submission():
     ptr.print_log('STEP4: generating submission ...')
 
+    submission = pd.read_csv(submission_path)
+    
     XGB_WEIGHT_LIST = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0]
     LGB_WEIGHT_LIST = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 
     for XGB_WEIGHT, LGB_WEIGHT in zip(XGB_WEIGHT_LIST, LGB_WEIGHT_LIST):
-        submission = pd.read_csv(submission_path)
         submission['target'] = xgb_pred*XGB_WEIGHT + lgb_pred*LGB_WEIGHT
-    
         submission.to_csv('sub{}_{}_{}.csv'.format(datetime.now().strftime('%Y%m%d_%H%M%S'), XGB_WEIGHT, LGB_WEIGHT), 
                           index=False, float_format='%.5f')
     
