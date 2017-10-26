@@ -31,9 +31,9 @@ class Settings(Enum):
     global IS_PARAMS_TUNNING
 
    
-    train_path      = 'C:/data/kaggle/safe_driver_prediction/train.csv'
-    test_path       = 'C:/data/kaggle/safe_driver_prediction/test.csv'
-    submission_path = 'C:/data/kaggle/safe_driver_prediction/sample_submission.csv'
+    train_path      = 'D:/data/safe_driver_prediction/train.csv'
+    test_path       = 'D:/data/safe_driver_prediction/test.csv'
+    submission_path = 'D:/data/safe_driver_prediction/sample_submission.csv'
     IS_PARAMS_TUNNING = False
 
     
@@ -63,8 +63,7 @@ def process_data():
     
     # remove outliers
     _remove_outliers(train_df)
-    _remove_outliers(test_df)
-    
+        
     # select and drop features
     _select_drop_features(train_df)
     _select_drop_features(test_df)
@@ -126,6 +125,12 @@ def _add_features(df):
 def _remove_outliers(df):
     ptr.print_log('Removing features ...')
     
+    df.drop(df[df['ps_car_12'] > 1.0].index, axis=0, inplace = True)
+    df.drop(df[df['ps_car_12'] < 0.25].index, axis=0, inplace = True)
+    df.drop(df[df['ps_car_13'] > 3.0].index, axis=0, inplace = True)
+    df.drop(df[df['ps_car_14'] < 0.0].index, axis=0, inplace = True)
+    df.drop(df[df['ps_reg_03'] > 3.0].index, axis=0, inplace = True)
+    
 def _select_drop_features(df):
     ptr.print_log('Selecting and dropping features according to feature importance ...')
     
@@ -173,7 +178,6 @@ def build_model():
     }
         
     # lightgbm params
-    # tuned with kfold=5: max auc: 0.6397383698465186
     lgb_params = {
         'objective': 'binary',
         'metric' : 'auc',
@@ -234,33 +238,34 @@ def train_predict():
     lgb_pred = 0.0
     skf = StratifiedKFold(n_splits=kfold)
 
-    for i, (train_index, valid_index) in enumerate(skf.split(data_x, data_y)):
-        ptr.print_log('lightgbm kfold: {}'.format(i+1))
-        
-        train_x, valid_x = data_x[train_index], data_x[valid_index]
-        train_y, valid_y = data_y[train_index], data_y[valid_index]
-        
-        d_train = lgb.Dataset(train_x, train_y) 
-        d_valid = lgb.Dataset(valid_x, valid_y)
-
-        valid_sets = [d_train, d_valid]
-        valid_names = ['train', 'valid']
-        evals_result = {}
-        
-        lgb_model = lgb.train(lgb_params, d_train,
-                              num_boost_round = 10000,
-                              valid_sets = valid_sets, valid_names = valid_names,
-                              feval = _gini_lgb, evals_result = evals_result,
-                              early_stopping_rounds = 100, verbose_eval = 100)
-        
-        lgb_pred += lgb_model.predict(test_x, num_iteration = lgb_model.best_iteration)
-        
-        result_train_gini = evals_result['train']
-        result_valid_gini = evals_result['valid']
-        for j in range(lgb_model.best_iteration+1):
-            train_gini = result_train_gini['gini'][j]
-            valid_gini = result_valid_gini['gini'][j]
-            ptr.print_log('round, train_gini, valid_gini: {0:04}, {1:0.6}, {2:0.6}'.format(j, train_gini, valid_gini), False)        
+    if False:
+        for i, (train_index, valid_index) in enumerate(skf.split(data_x, data_y)):
+            ptr.print_log('lightgbm kfold: {}'.format(i+1))
+            
+            train_x, valid_x = data_x[train_index], data_x[valid_index]
+            train_y, valid_y = data_y[train_index], data_y[valid_index]
+            
+            d_train = lgb.Dataset(train_x, train_y) 
+            d_valid = lgb.Dataset(valid_x, valid_y)
+    
+            valid_sets = [d_train, d_valid]
+            valid_names = ['train', 'valid']
+            evals_result = {}
+            
+            lgb_model = lgb.train(lgb_params, d_train,
+                                  num_boost_round = 10000,
+                                  valid_sets = valid_sets, valid_names = valid_names,
+                                  feval = _gini_lgb, evals_result = evals_result,
+                                  early_stopping_rounds = 100, verbose_eval = 100)
+            
+            lgb_pred += lgb_model.predict(test_x, num_iteration = lgb_model.best_iteration)
+            
+            result_train_gini = evals_result['train']
+            result_valid_gini = evals_result['valid']
+            for j in range(lgb_model.best_iteration+1):
+                train_gini = result_train_gini['gini'][j]
+                valid_gini = result_valid_gini['gini'][j]
+                ptr.print_log('round, train_gini, valid_gini: {0:04}, {1:0.6}, {2:0.6}'.format(j, train_gini, valid_gini), False)        
         
     lgb_pred = lgb_pred / kfold
     gc.collect()
