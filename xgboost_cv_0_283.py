@@ -103,9 +103,9 @@ def target_encode(trn_series=None,    # Revised to encode validation series
 
 
 # Read data
-train_path      = '/data/kaggle/safe_driver_prediction/train.csv'
-test_path       = '/data/kaggle/safe_driver_prediction/test.csv'
-submission_path = '/data/kaggle/safe_driver_prediction/sample_submission.csv'
+train_path      = 'C:/data/kaggle/safe_driver_prediction/train.csv'
+test_path       = 'C:/data/kaggle/safe_driver_prediction/test.csv'
+submission_path = 'C:/data/kaggle/safe_driver_prediction/sample_submission.csv'
 train_df = pd.read_csv(train_path, na_values="-1") # .iloc[0:200,:]
 test_df = pd.read_csv(test_path, na_values="-1")
 
@@ -271,11 +271,4 @@ sub = pd.DataFrame()
 sub['id'] = id_test
 sub['target'] = y_test_pred
 sub.to_csv('xgb_submit.csv', float_format='%.6f', index=False)
-
-
-
-
-
-
-
 
