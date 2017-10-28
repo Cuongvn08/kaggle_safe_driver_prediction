@@ -1,13 +1,12 @@
-MAX_ROUNDS = 300
-OPTIMIZE_ROUNDS = False
-LEARNING_RATE = 0.07
+MAX_ROUNDS = 3000
+OPTIMIZE_ROUNDS = True
+LEARNING_RATE = 0.005
 EARLY_STOPPING_ROUNDS = 50
 
 
 import numpy as np
 import pandas as pd
 from xgboost import XGBClassifier
-from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import LabelEncoder
 from numba import jit
