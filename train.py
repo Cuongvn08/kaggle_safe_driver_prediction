@@ -60,11 +60,11 @@ def process_data():
     # add features
     
     # remove outliers
-    _remove_outliers(train_df)
+    #_remove_outliers(train_df)
         
     # select and drop features
-    _select_drop_features(train_df)
-    _select_drop_features(test_df)
+    #_select_drop_features(train_df)
+    #_select_drop_features(test_df)
     
     # prepare train and valid data
     ptr.print_log('Preparing train and test data ...')
@@ -118,11 +118,13 @@ def _add_features(df):
 def _remove_outliers(df):
     ptr.print_log('Removing features ...')
     
+    '''
     df.drop(df[df['ps_car_12'] > 1.0].index, axis=0, inplace = True)
     df.drop(df[df['ps_car_12'] < 0.25].index, axis=0, inplace = True)
     df.drop(df[df['ps_car_13'] > 3.0].index, axis=0, inplace = True)
     df.drop(df[df['ps_car_14'] < 0.0].index, axis=0, inplace = True)
     df.drop(df[df['ps_reg_03'] > 3.0].index, axis=0, inplace = True)
+    '''
     
 def _select_drop_features(df):
     ptr.print_log('Selecting and dropping features according to feature importance ...')
@@ -146,6 +148,7 @@ def _select_drop_features(df):
     df.drop(drop_features, axis=1, inplace=True)
     '''
     
+    '''
     select_features = [
        "ps_car_13",  #            : 1571.65 / shadow  609.23
     	"ps_reg_03",  #            : 1408.42 / shadow  511.15
@@ -184,6 +187,7 @@ def _select_drop_features(df):
     ]    
     
     df = df[select_features]
+    '''
     
     
 ################################################################################        
@@ -202,7 +206,7 @@ def build_model():
         'objective': 'binary:logistic',
         'eval_metric': 'auc',
         'eta': 0.005,
-        'max_depth': 5, 
+        'max_depth': 4, 
         'min_child_weight': 1,
         'subsample': 0.8,
         'colsample_bytree': 0.8,
@@ -242,31 +246,33 @@ def train_predict():
     for i, (train_index, valid_index) in enumerate(skf.split(data_x, data_y)):
         ptr.print_log('xgboost kfold: {}'.format(i+1))
 
-        train_x, valid_x = data_x[train_index], data_x[valid_index]
-        train_y, valid_y = data_y[train_index], data_y[valid_index]
-                
-        d_train = xgb.DMatrix(train_x, train_y) 
-        d_valid = xgb.DMatrix(valid_x, valid_y)
-        
-        evals = [(d_train, 'train'), (d_valid, 'valid')]
-        evals_result = {}
-        xgb_model = xgb.train(xgb_params, d_train, 
-                              num_boost_round = 10000,
-                              evals = evals, feval = _gini_xgb,
-                              evals_result = evals_result,
-                              maximize = True, early_stopping_rounds = 50, verbose_eval = 100)
-                
-        xgb_pred += xgb_model.predict(d_test, ntree_limit = xgb_model.best_ntree_limit)
-        
-        if False:
-            result_train_gini = evals_result['train']
-            result_valid_gini = evals_result['valid']
-            for j in range(xgb_model.best_iteration+1):
-                train_gini = result_train_gini['gini'][j]
-                valid_gini = result_valid_gini['gini'][j]
-                ptr.print_log('round, train_gini, valid_gini: {0:04}, {1:0.6}, {2:0.6}'.format(j, train_gini, valid_gini), False)
+        if i == 3: # best cv
+            train_x, valid_x = data_x[train_index], data_x[valid_index]
+            train_y, valid_y = data_y[train_index], data_y[valid_index]
+                    
+            d_train = xgb.DMatrix(train_x, train_y) 
+            d_valid = xgb.DMatrix(valid_x, valid_y)
             
-    xgb_pred = xgb_pred / kfold
+            evals = [(d_train, 'train'), (d_valid, 'valid')]
+            evals_result = {}
+            xgb_model = xgb.train(xgb_params, d_train, 
+                                  num_boost_round = 10000,
+                                  evals = evals, feval = _gini_xgb,
+                                  evals_result = evals_result,
+                                  maximize = True, early_stopping_rounds = 50, verbose_eval = 100)
+                    
+            xgb_pred += xgb_model.predict(d_test, ntree_limit = xgb_model.best_ntree_limit)
+            
+            if False:
+                result_train_gini = evals_result['train']
+                result_valid_gini = evals_result['valid']
+                for j in range(xgb_model.best_iteration+1):
+                    train_gini = result_train_gini['gini'][j]
+                    valid_gini = result_valid_gini['gini'][j]
+                    ptr.print_log('round, train_gini, valid_gini: {0:04}, {1:0.6}, {2:0.6}'.format(j, train_gini, valid_gini), False)
+                
+    #xgb_pred = xgb_pred / kfold
+    xgb_pred = xgb_pred # only choose cv 3
     gc.collect()
         
     # lightgbm
