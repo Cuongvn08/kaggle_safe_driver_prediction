@@ -1,18 +1,26 @@
-MAX_ROUNDS = 3000
-OPTIMIZE_ROUNDS = True
-LEARNING_RATE = 0.005
-EARLY_STOPPING_ROUNDS = 50
+MAX_ROUNDS = 400
+OPTIMIZE_ROUNDS = False
+LEARNING_RATE = 0.07
+EARLY_STOPPING_ROUNDS = 50  
+
+train_path      = 'C:/data/kaggle/safe_driver_prediction/train.csv'
+test_path       = 'C:/data/kaggle/safe_driver_prediction/test.csv'
+submission_path = 'C:/data/kaggle/safe_driver_prediction/sample_submission.csv'
+    
+# Note: I set EARLY_STOPPING_ROUNDS high so that (when OPTIMIZE_ROUNDS is set)
+#       I will get lots of information to make my own judgment.  You should probably
+#       reduce EARLY_STOPPING_ROUNDS if you want to do actual early stopping.
 
 
 import numpy as np
 import pandas as pd
 from xgboost import XGBClassifier
+from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import LabelEncoder
 from numba import jit
 import time
 import gc
-
 
 
 # Compute gini
@@ -102,9 +110,6 @@ def target_encode(trn_series=None,    # Revised to encode validation series
 
 
 # Read data
-train_path      = 'C:/data/kaggle/safe_driver_prediction/train.csv'
-test_path       = 'C:/data/kaggle/safe_driver_prediction/test.csv'
-submission_path = 'C:/data/kaggle/safe_driver_prediction/sample_submission.csv'
 train_df = pd.read_csv(train_path, na_values="-1") # .iloc[0:200,:]
 test_df = pd.read_csv(test_path, na_values="-1")
 
@@ -146,6 +151,7 @@ train_features = [
 	"ps_ind_12_bin",  #        :   39.67 / shadow   15.52
 	"ps_ind_14",  #            :   37.37 / shadow   16.65
 ]
+
 # add combinations
 combs = [
     ('ps_reg_01', 'ps_car_02_cat'),  
@@ -180,6 +186,7 @@ test_df = test_df[train_features]
 f_cats = [f for f in X.columns if "_cat" in f]
 
 
+
 y_valid_pred = 0*y
 y_test_pred = 0
 
@@ -196,17 +203,18 @@ model = XGBClassifier(
                         max_depth=4,
                         objective="binary:logistic",
                         learning_rate=LEARNING_RATE, 
-                        subsample=.8, 
+                        subsample=.8,
+                        min_child_weight=6,
                         colsample_bytree=.8,
-                        scale_pos_weight=1.7,
-                        gamma=8,
-                        reg_alpha=0.5,
+                        scale_pos_weight=1.6,
+                        gamma=10,
+                        reg_alpha=8,
                         reg_lambda=1.3,
                      )
 
 
-# Run CV
 
+# Run CV
 for i, (train_index, test_index) in enumerate(kf.split(train_df)):
     
     # Create data for this fold
@@ -233,7 +241,7 @@ for i, (train_index, test_index) in enumerate(kf.split(train_df)):
                                eval_set=eval_set,
                                eval_metric=gini_xgb,
                                early_stopping_rounds=EARLY_STOPPING_ROUNDS,
-                               verbose=True
+                               verbose=False
                              )
         print( "  Best N trees = ", model.best_ntree_limit )
         print( "  Best gini = ", model.best_score )
@@ -264,10 +272,12 @@ val['target'] = y_valid_pred.values
 val.to_csv('xgb_valid.csv', float_format='%.6f', index=False)
 
 
-
 # Create submission file
 sub = pd.DataFrame()
 sub['id'] = id_test
 sub['target'] = y_test_pred
 sub.to_csv('xgb_submit.csv', float_format='%.6f', index=False)
+
+
+
 
