@@ -23,15 +23,14 @@ import seaborn as sns
 from sklearn.preprocessing import Imputer
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.preprocessing import StandardScaler
-from sklearn.feature_selection import VarianceThreshold
 from sklearn.feature_selection import SelectFromModel
 from sklearn.utils import shuffle
 from sklearn.ensemble import RandomForestClassifier
 
 pd.set_option('display.max_columns', 100)
 
-train = pd.read_csv('D:/data/safe_driver_prediction/train.csv')
-test = pd.read_csv('D:/data/safe_driver_prediction/test.csv')
+train = pd.read_csv('C:/data/kaggle/safe_driver_prediction/train.csv')
+test = pd.read_csv('C:/data/kaggle/safe_driver_prediction/test.csv')
 
 
 ################################################################################
@@ -59,14 +58,18 @@ We indeed see the following:
 * the target variable and an ID variable
 '''
 
-print('train shape: ', train.shape) # (595212, 59)
-print('test shape: ', test.shape) # (892816, 58)
+print('\n\n')
+print('train shape: {}'.format(train.shape)) # (595212, 59)
+print('test shape: {}'.format(test.shape)) # (892816, 58)
 
+print('\n\n')
 print(train.info())
 
 
 ################################################################################
 ## METADATA
+print('\nMETADATA ...')
+
 '''
 To facilitate the data management, we'll store meta-information about the variables 
 in a DataFrame. This will be helpful when we want to select specific variables 
@@ -127,6 +130,8 @@ print(meta)
 
 ################################################################################
 ## Descriptive statistics
+print('\nDescriptive statistics ...')
+
 '''
 We can also apply the describe method on the dataframe. 
 However, it doesn't make much sense to calculate the mean, std, ... on categorical 
@@ -135,19 +140,24 @@ variables and the id variable. We'll explore the categorical variables visually 
 
 # Interval variables
 v = meta[(meta.level == 'interval') & (meta.keep)].index
+print('\nInterval variables:')
 print(train[v].describe())
 
 # Ordinal variables
 v = meta[(meta.level == 'ordinal') & (meta.keep)].index
+print('\nOrdinal variables:')
 print(train[v].describe())
 
 # Binary variables
 v = meta[(meta.level == 'binary') & (meta.keep)].index
+print('\nBinary variables:')
 print(train[v].describe())
 
 
 ################################################################################
 # Handling imbalanced classes
+print('\nHandling imbalanced classes ...')
+
 '''
 As we mentioned above the proportion of records with target=1 is far less than target=0 (0.036448)
 This can lead to a model that has great accuracy but does have any added value in practice. 
@@ -182,13 +192,14 @@ idx_list = list(undersampled_idx) + list(idx_1)
 
 # Return undersample data frame
 train = train.loc[idx_list].reset_index(drop=True)
-print('train shape: ', train.shape)
+print('train shape after undersampling data: ', train.shape)
 print('target 0 count: ', (train['target'] == 0).sum())
 print('target 1 count: ', (train['target'] == 1).sum())
 
 
 ################################################################################
 ## Data Quality Checks
+print('\nData Quality Checks ...')
 
 # Checking missing values: Missings are represented as -1
 vars_with_missing = []
@@ -297,8 +308,10 @@ test.drop('ps_car_11_cat', axis=1, inplace=True)
 
 ################################################################################
 ## Exploratory Data Visualization
+print('\nExploratory Data Visualization ...')
     
 # Categorical variables
+print('\nCategorical variables')
 v = meta[(meta.level == 'nominal') & (meta.keep)].index
 for f in v:
     plt.figure()
@@ -314,7 +327,8 @@ for f in v:
     plt.ylabel('% target', fontsize=10)
     plt.xlabel(f, fontsize=10)
     plt.tick_params(axis='both', which='major', labelsize=18)
-    plt.show();
+    plt.show()
+        
 '''
 As we can see from the variables with missing values, 
 it is a good idea to keep the missing values as a separate category value, 
@@ -324,6 +338,7 @@ probability to ask for an insurance claim.
 '''
 
 # Checking the correlations between Interval variables
+print('\ncorrelation between interval variables')
 '''
 Checking the correlations between interval variables. A heatmap is a good way 
 to visualize the correlation between variables.
@@ -338,8 +353,8 @@ def corr_heatmap(v):
     fig, ax = plt.subplots(figsize=(10,10))
     sns.heatmap(correlations, cmap=cmap, vmax=1.0, center=0, fmt='.2f',
                 square=True, linewidths=.5, annot=True, cbar_kws={"shrink": .75})
-    plt.show();
-    
+    plt.show()
+        
 v = meta[(meta.level == 'interval') & (meta.keep)].index
 corr_heatmap(v)
 '''
@@ -357,24 +372,73 @@ plt.show()
 sns.lmplot(x='ps_car_12', y='ps_car_13', data=s, hue='target', palette='Set1', scatter_kws={'alpha':0.3})
 plt.show()
 
-sns.lmplot(x='ps_car_12', y='ps_car_13', data=s, hue='target', palette='Set1', scatter_kws={'alpha':0.3})
+sns.lmplot(x='ps_car_12', y='ps_car_14', data=s, hue='target', palette='Set1', scatter_kws={'alpha':0.3})
 plt.show()
 
 sns.lmplot(x='ps_car_15', y='ps_car_13', data=s, hue='target', palette='Set1', scatter_kws={'alpha':0.3})
 plt.show()
 
 # Checking the correlations between ordinal variables
+print('\ncorrelation between ordinal variables')
 v = meta[(meta.level == 'ordinal') & (meta.keep)].index
 corr_heatmap(v)
 
 
+################################################################################
+## Feature engineering
+print('\nFeature engineering ...')
+
+# Creating dummy variables from categorical features
+v = meta[(meta.level == 'nominal') & (meta.keep)].index
+print('Before dummification we have {} variables in train'.format(train.shape[1]))
+
+train = pd.get_dummies(train, columns=v, drop_first=True)
+print('After dummification we have {} variables in train'.format(train.shape[1]))
+
+# Creating interaction variables
+v = meta[(meta.level == 'interval') & (meta.keep)].index
+poly = PolynomialFeatures(degree=2, interaction_only=False, include_bias=False)
+interactions = pd.DataFrame(data=poly.fit_transform(train[v]), columns=poly.get_feature_names(v))
+interactions.drop(v, axis=1, inplace=True)  # Remove the original columns
+print('Before creating interactions we have {} variables in train'.format(train.shape[1]))
+
+train = pd.concat([train, interactions], axis=1)
+print('After creating interactions we have {} variables in train'.format(train.shape[1]))
 
 
+## Feature selection
+print('\nFeature selection ...')
+
+# Selecting features with a Random Forest and SelectFromModel
+X_train = train.drop(['id', 'target'], axis=1)
+y_train = train['target']
+
+feat_labels = X_train.columns
+
+rf = RandomForestClassifier(n_estimators=1000, random_state=0, n_jobs=-1)
+rf.fit(X_train, y_train)
+importances = rf.feature_importances_
+
+indices = np.argsort(rf.feature_importances_)[::-1]
+
+for f in range(X_train.shape[1]):
+    print("%2d) %-*s %f" % (f + 1, 30,feat_labels[indices[f]], importances[indices[f]]))
+        
+sfm = SelectFromModel(rf, threshold='median', prefit=True)
+print('Number of features before selection: {}'.format(X_train.shape[1]))
+
+n_features = sfm.transform(X_train).shape[1]
+print('Number of features after selection: {}'.format(n_features))
+
+selected_vars = list(feat_labels[sfm.get_support()])
+train = train[selected_vars + ['target']]
 
 
+## Feature scaling
+print('\nFeature scaling ...')
+scaler = StandardScaler()
+scaler.fit_transform(train.drop(['target'], axis=1))
 
 
-
-
-
-
+print('The end.')       
+        
