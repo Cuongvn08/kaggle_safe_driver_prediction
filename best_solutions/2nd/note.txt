@@ -1,0 +1,43 @@
+https://www.kaggle.com/c/porto-seguro-safe-driver-prediction/discussion/44558
+
+Description:
+三个臭皮匠's approach(s)
+posted in Porto Seguro’s Safe Driver Prediction 3 days ago
+
+
+
+It definitely came as a surprise to me that there was this huge shake up in the end. I personally thought that the shake up should be relatively small because my stacking model performance on public LB and local cv was always aligned although for single model they could vary quite a bit. We did trust mostly on local CV and we tried very hard on nonlinear stacking (without success) so we relied on weighted average cv score and only submitted when there was an improvement on local cv.
+
+I cannot wait to see what @Michael Jahrer did but I would like to share some of our approaches (actually, just the NN part, and leave the rest to my teammates) before Michael publishes his and then nobody cares what we did :(
+
+So my best NN had a 5 fold local CV 0.294, and public LB 0.284 and private 0.290. And here is roughly how you can achieve that:
+
+1) important features' interactions (e.g. ps_car_13, ps_ind_03, ps_reg_03, ...)
+
+2) count of categorical features
+
+3) xgboost predictions: divide feature sets into three groups (car, ind, reg) and then use two group as features and the other group as target, train a xgboost model on it, and use prediction as features
+
+4) feature aggregation: pick two features (e.g. ps_car_13, ps_ind_03), and then use one as group variable, the other as value variable, do mean, std, max, min, median. Still top important features are picked only
+
+5) do embedding layers on all categorical features (I used embedding dimension 4 with dropout 0.25)
+
+6) model is 2 layer with relu activation and big dropout (512 with dropout 0.8, and 64 with 0.8)
+
+7) a few categorical count features @qianqian created
+
+That is about it! Hope it helps :)
+
+Update: my best lightgbm code is here
+
+https://www.kaggle.com/xiaozhouwang/2nd-place-lightgbm-solution
+
+It scored 0.29124 on private LB.
+
+best nn code is here https://www.kaggle.com/xiaozhouwang/2nd-place-solution-nn-model
+
+It scored 0.29008 on private LB.
+
+And their model results can be found in the comments (Seems I cannot upload files here?)
+
+Also, we will prepare all the relevant code in this repo https://github.com/xiaozhouwang/kaggle-porto-seguro
